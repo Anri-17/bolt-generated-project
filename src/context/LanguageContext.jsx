@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
+import { useAuth } from './AuthContext'
 
 const translations = {
-  en: {
+	en: {
     home: 'Home',
     products: 'Products',
     contact: 'Contact',
@@ -76,7 +77,12 @@ const translations = {
     newsletter: 'Newsletter',
     enter_email: 'Enter your email',
     subscribe: 'Subscribe',
-    all_rights_reserved: 'All rights reserved'
+    all_rights_reserved: 'All rights reserved',
+    // In your LanguageContext translations
+    out_of_stock: 'Out of Stock',
+    only_x_left: 'Only {count} left!',
+    product_added_to_cart: 'Product added to cart!',
+    view_cart: 'View Cart'
   },
   ka: {
     home: 'მთავარი',
@@ -153,21 +159,50 @@ const translations = {
     newsletter: 'სიახლეები',
     enter_email: 'შეიყვანეთ ელ. ფოსტა',
     subscribe: 'გამოწერა',
-    all_rights_reserved: 'ყველა უფლება დაცულია'
+    all_rights_reserved: 'ყველა უფლება დაცულია',
+    // In your LanguageContext translations
+    out_of_stock: 'არ არის მარაგში',
+    only_x_left: 'მხოლოდ {count} დარჩა!',
+    product_added_to_cart: 'პროდუქტი დაემატა კალათაში!',
+    view_cart: 'კალათის ნახვა'
   }
 }
 
 const LanguageContext = createContext()
 
 export const LanguageProvider = ({ children }) => {
-  const [language, setLanguage] = useState('ka')
+  const { profile, updateProfile } = useAuth()
+  const [language, setLanguage] = useState(profile?.language || 'ka')
 
-  const t = (key) => {
-    return translations[language][key] || key
+  useEffect(() => {
+    if (profile?.language) {
+      setLanguage(profile.language)
+    }
+  }, [profile])
+
+  const handleLanguageChange = async (newLanguage) => {
+    setLanguage(newLanguage)
+    if (profile) {
+      await updateProfile({ language: newLanguage })
+    }
+  }
+
+  const t = (key, params) => {
+    let translation = translations[language][key] || key
+    if (params) {
+      Object.keys(params).forEach(paramKey => {
+        translation = translation.replace(`{${paramKey}}`, params[paramKey])
+      })
+    }
+    return translation
   }
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ 
+      language, 
+      setLanguage: handleLanguageChange, 
+      t 
+    }}>
       {children}
     </LanguageContext.Provider>
   )

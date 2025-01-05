@@ -1,35 +1,49 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
+import { useNavigate } from 'react-router-dom'
 
 export default function AccountPage() {
   const { t } = useLanguage()
-  const { user, signIn, signUp } = useAuth()
+  const { 
+    user, 
+    profile,
+    signIn, 
+    signUp, 
+    signOut, 
+    loading, 
+    updateProfile 
+  } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (user) {
+      navigate('/')
+    }
+  }, [user, navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
     setError(null)
 
     try {
       if (isSignUp) {
-        await signUp(email, password)
+        const { error } = await signUp(email, password)
+        if (error) throw error
       } else {
-        await signIn(email, password)
+        const { error } = await signIn(email, password)
+        if (error) throw error
       }
     } catch (err) {
       setError(err.message)
-    } finally {
-      setLoading(false)
     }
   }
 
-  if (user) {
+  if (user && profile) {
     return (
       <div className="container mx-auto p-4">
         <h1 className="text-2xl font-bold mb-6">{t('account')}</h1>
@@ -45,11 +59,11 @@ export default function AccountPage() {
                   type="email"
                   value={user.email}
                   disabled
-                  className="input-field bg-gray-100"
+                  className="input-field bg-gray-100 text-black"
                 />
               </div>
-              <button
-                onClick={() => signOut()}
+              <button 
+                onClick={signOut} 
                 className="btn-outline-black w-full"
               >
                 {t('sign_out')}
@@ -83,7 +97,7 @@ export default function AccountPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="input-field"
+                className="input-field text-black"
                 required
               />
             </div>
@@ -95,7 +109,7 @@ export default function AccountPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="input-field"
+                className="input-field text-black"
                 required
               />
             </div>

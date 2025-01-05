@@ -53,7 +53,7 @@ const processApplePay = async (paymentData) => {
       supportedNetworks: ['visa', 'masterCard'],
       merchantCapabilities: ['supports3DS'],
       total: {
-        label: 'ANSA',
+        label: 'Football Gear',
         amount: paymentData.amount
       }
     })
@@ -98,7 +98,7 @@ const processGooglePay = async (paymentData) => {
           apiVersionMinor: 0,
           merchantInfo: {
             merchantId: process.env.VITE_GOOGLE_MERCHANT_ID,
-            merchantName: 'ANSA'
+            merchantName: 'Football Gear'
           },
           allowedPaymentMethods: [
             {
