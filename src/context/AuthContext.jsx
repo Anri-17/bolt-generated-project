@@ -6,83 +6,45 @@ const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
+    // Check active sessions and sets the user
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        setUser(session.user)
-        await fetchProfile(session.user.id)
-      }
+      setUser(session?.user ?? null)
       setLoading(false)
     }
 
-    getSession()
-
+    // Listen for changes to authentication state
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (session?.user) {
-          setUser(session.user)
-          await fetchProfile(session.user.id)
-          navigate('/')
-        } else {
-          setUser(null)
-          setProfile(null)
-        }
+        setUser(session?.user ?? null)
         setLoading(false)
+        
+        // Redirect after successful auth
+        if (event === 'SIGNED_IN') {
+          navigate('/')
+        }
       }
     )
+
+    getSession()
 
     return () => subscription?.unsubscribe()
   }, [navigate])
 
-  const fetchProfile = async (userId) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    
-    if (!error) {
-      setProfile(data)
-    }
-  }
-
-  const createProfile = async (userId, email) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .insert([{
-        id: userId,
-        email,
-        role: 'customer',
-        language: 'ka' // Default language
-      }])
-      .select()
-      .single()
-    
-    if (!error) {
-      setProfile(data)
-    }
-    return { data, error }
-  }
-
   const value = {
     user,
-    profile,
     loading,
     signIn: async (email, password) => {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       })
-      if (!error) {
-        await fetchProfile(data.user.id)
-        navigate('/')
-      }
-      return { user: data?.user, error }
+      if (error) throw error
+      return data
     },
     signOut: async () => {
       await supabase.auth.signOut()
@@ -93,25 +55,8 @@ export function AuthProvider({ children }) {
         email,
         password
       })
-      if (!error) {
-        await createProfile(data.user.id, email)
-        navigate('/')
-      }
-      return { user: data?.user, error }
-    },
-    updateProfile: async (updates) => {
-      if (!user) return
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id)
-        .select()
-        .single()
-      
-      if (!error) {
-        setProfile(data)
-      }
-      return { data, error }
+      if (error) throw error
+      return data
     }
   }
 
@@ -123,5 +68,9 @@ export function AuthProvider({ children }) {
 }
 
 export function useAuth() {
-  return useContext(AuthContext)
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 }

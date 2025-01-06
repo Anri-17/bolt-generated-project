@@ -5,6 +5,7 @@ import ProductsPage from '../pages/ProductsPage'
 import ContactPage from '../pages/ContactPage'
 import CartPage from '../pages/CartPage'
 import AccountPage from '../pages/AccountPage'
+import LearnMorePage from '../pages/LearnMorePage'
 import NotFoundPage from '../pages/NotFoundPage'
 import { useAuth } from '../context/AuthContext'
 
@@ -18,6 +19,7 @@ function AppRoutes() {
       <Route path="/contact" element={<ContactPage />} />
       <Route path="/cart" element={<CartPage />} />
       <Route path="/account" element={<AccountPage />} />
+      <Route path="/about" element={<LearnMorePage />} />
       {user && (
         <Route path="/admin" element={<NotFoundPage />} />
       )}

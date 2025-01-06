@@ -1,30 +1,14 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
-import { useNavigate } from 'react-router-dom'
 
 export default function AccountPage() {
   const { t } = useLanguage()
-  const { 
-    user, 
-    profile,
-    signIn, 
-    signUp, 
-    signOut, 
-    loading, 
-    updateProfile 
-  } = useAuth()
+  const { user, signIn, signUp, signOut, loading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [error, setError] = useState(null)
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    if (user) {
-      navigate('/')
-    }
-  }, [user, navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -32,18 +16,16 @@ export default function AccountPage() {
 
     try {
       if (isSignUp) {
-        const { error } = await signUp(email, password)
-        if (error) throw error
+        await signUp(email, password)
       } else {
-        const { error } = await signIn(email, password)
-        if (error) throw error
+        await signIn(email, password)
       }
     } catch (err) {
       setError(err.message)
     }
   }
 
-  if (user && profile) {
+  if (user) {
     return (
       <div className="container mx-auto p-4">
         <h1 className="text-2xl font-bold mb-6">{t('account')}</h1>
@@ -63,7 +45,7 @@ export default function AccountPage() {
                 />
               </div>
               <button 
-                onClick={signOut} 
+                onClick={signOut}
                 className="btn-outline-black w-full"
               >
                 {t('sign_out')}

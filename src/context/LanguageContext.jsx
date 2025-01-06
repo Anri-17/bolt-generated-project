@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
-import { useAuth } from './AuthContext'
+import React, { createContext, useContext, useState } from 'react'
 
 const translations = {
-	en: {
+  en: {
     home: 'Home',
     products: 'Products',
     contact: 'Contact',
@@ -21,6 +20,7 @@ const translations = {
     welcome_to_ansa: 'Welcome to ANSA',
     hero_description: 'Your one-stop shop for premium sports gear and equipment',
     shop_now: 'Shop Now',
+    learn_more: 'Learn More',
     featured_products: 'Featured Products',
     no_products_found: 'No products found',
     jerseys: 'Jerseys',
@@ -78,11 +78,20 @@ const translations = {
     enter_email: 'Enter your email',
     subscribe: 'Subscribe',
     all_rights_reserved: 'All rights reserved',
-    // In your LanguageContext translations
     out_of_stock: 'Out of Stock',
     only_x_left: 'Only {count} left!',
     product_added_to_cart: 'Product added to cart!',
-    view_cart: 'View Cart'
+    view_cart: 'View Cart',
+    about_us: 'About Us',
+    our_mission: 'Our Mission',
+    our_team: 'Our Team',
+    company_history: 'Company History',
+    learn_more_description: 'Discover more about our company, mission, and values',
+    mission_text: 'Our mission is to provide high-quality sports gear while promoting an active lifestyle',
+    team_text: 'Meet our passionate team of sports enthusiasts and professionals',
+    history_text: 'Founded in 2010, we\'ve been serving athletes for over a decade',
+    incorrect_credentials: 'Incorrect credentials',
+    generic_error: 'An error occurred. Please try again later.'
   },
   ka: {
     home: 'მთავარი',
@@ -103,6 +112,7 @@ const translations = {
     welcome_to_ansa: 'კეთილი იყოს თქვენი მობრძანება ANSA-ში',
     hero_description: 'პრემიუმ სპორტული აღჭურვილობის ერთადერთი მაღაზია',
     shop_now: 'იყიდე ახლავე',
+    learn_more: 'გაიგეთ მეტი',
     featured_products: 'რეკომენდირებული პროდუქტები',
     no_products_found: 'პროდუქტები ვერ მოიძებნა',
     jerseys: 'ფორმები',
@@ -160,32 +170,27 @@ const translations = {
     enter_email: 'შეიყვანეთ ელ. ფოსტა',
     subscribe: 'გამოწერა',
     all_rights_reserved: 'ყველა უფლება დაცულია',
-    // In your LanguageContext translations
     out_of_stock: 'არ არის მარაგში',
     only_x_left: 'მხოლოდ {count} დარჩა!',
     product_added_to_cart: 'პროდუქტი დაემატა კალათაში!',
-    view_cart: 'კალათის ნახვა'
+    view_cart: 'კალათის ნახვა',
+    about_us: 'ჩვენს შესახებ',
+    our_mission: 'ჩვენი მისია',
+    our_team: 'ჩვენი გუნდი',
+    company_history: 'კომპანიის ისტორია',
+    learn_more_description: 'გაეცანით ჩვენს კომპანიას, მისიას და ღირებულებებს',
+    mission_text: 'ჩვენი მისიაა მაღალი ხარისხის სპორტული აღჭურვილობის მიწოდება და აქტიური ცხოვრების წესის ხელშეწყობა',
+    team_text: 'გაიცანით ჩვენი გუნდი - სპორტის ენთუზიასტები და პროფესიონალები',
+    history_text: '2010 წელს დაარსებული კომპანია, რომელიც ათწლეულზე მეტია ემსახურება სპორტსმენებს',
+    incorrect_credentials: 'არასწორი მონაცემები',
+    generic_error: 'დაფიქსირდა შეცდომა. გთხოვთ სცადოთ მოგვიანებით.'
   }
 }
 
 const LanguageContext = createContext()
 
 export const LanguageProvider = ({ children }) => {
-  const { profile, updateProfile } = useAuth()
-  const [language, setLanguage] = useState(profile?.language || 'ka')
-
-  useEffect(() => {
-    if (profile?.language) {
-      setLanguage(profile.language)
-    }
-  }, [profile])
-
-  const handleLanguageChange = async (newLanguage) => {
-    setLanguage(newLanguage)
-    if (profile) {
-      await updateProfile({ language: newLanguage })
-    }
-  }
+  const [language, setLanguage] = useState('ka')
 
   const t = (key, params) => {
     let translation = translations[language][key] || key
@@ -198,11 +203,7 @@ export const LanguageProvider = ({ children }) => {
   }
 
   return (
-    <LanguageContext.Provider value={{ 
-      language, 
-      setLanguage: handleLanguageChange, 
-      t 
-    }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   )
