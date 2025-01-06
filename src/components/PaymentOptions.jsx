@@ -9,6 +9,10 @@ export default function PaymentOptions() {
   const [selectedMethod, setSelectedMethod] = useState('bog')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [paymentDetails, setPaymentDetails] = useState({
+    iban: '',
+    destination_name: ''
+  })
 
   const handlePayment = async () => {
     setLoading(true)
@@ -18,7 +22,12 @@ export default function PaymentOptions() {
       const paymentData = {
         amount: totalPrice,
         currency: 'GEL',
-        order_id: Date.now().toString()
+        order_id: Date.now().toString(),
+        customer_id: 'CUSTOMER_ID', // Replace with actual customer ID
+        ...(selectedMethod === 'bog' || selectedMethod === 'tbc' ? {
+          iban: paymentDetails.iban,
+          destination_name: paymentDetails.destination_name
+        } : {})
       }
 
       const result = await processPayment(paymentData, selectedMethod)
@@ -77,6 +86,37 @@ export default function PaymentOptions() {
           <img src="/google-pay-logo.png" alt="Google Pay" className="h-10 mx-auto" />
         </button>
       </div>
+
+      {(selectedMethod === 'bog' || selectedMethod === 'tbc') && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              {t('iban')}
+            </label>
+            <input
+              type="text"
+              value={paymentDetails.iban}
+              onChange={(e) => setPaymentDetails({ ...paymentDetails, iban: e.target.value })}
+              placeholder="GE00TB0000000000000000"
+              className="input-field"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              {t('destination_name')}
+            </label>
+            <input
+              type="text"
+              value={paymentDetails.destination_name}
+              onChange={(e) => setPaymentDetails({ ...paymentDetails, destination_name: e.target.value })}
+              placeholder={t('destination_name_placeholder')}
+              className="input-field"
+              required
+            />
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">

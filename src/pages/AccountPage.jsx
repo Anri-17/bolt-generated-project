@@ -28,10 +28,10 @@ export default function AccountPage() {
   if (user) {
     return (
       <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-6">{t('account')}</h1>
+        <h1 className="text-2xl font-bold mb-6 text-black">{t('account')}</h1>
         <div className="max-w-md mx-auto">
           <div className="bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-xl font-bold mb-4">{t('account_settings')}</h2>
+            <h2 className="text-xl font-bold mb-4 text-black">{t('account_settings')}</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
@@ -59,10 +59,10 @@ export default function AccountPage() {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">{t('account')}</h1>
+      <h1 className="text-2xl font-bold mb-6 text-black">{t('account')}</h1>
       <div className="max-w-md mx-auto">
         <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-bold mb-4">
+          <h2 className="text-xl font-bold mb-4 text-black">
             {isSignUp ? t('sign_up') : t('sign_in')}
           </h2>
           {error && (

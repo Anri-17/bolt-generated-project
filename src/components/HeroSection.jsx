@@ -1,5 +1,6 @@
 import React from 'react'
 import { useLanguage } from '../context/LanguageContext'
+import { Link } from 'react-router-dom'
 
 export default function HeroSection() {
   const { t } = useLanguage()
@@ -15,18 +16,18 @@ export default function HeroSection() {
             {t('hero_description')}
           </p>
           <div className="flex gap-4 justify-center">
-            <a
-              href="/products"
+            <Link
+              to="/products"
               className="btn-outline-white"
             >
               {t('shop_now')}
-            </a>
-            <a
-              href="/about"
+            </Link>
+            <Link
+              to="/about"
               className="btn-outline-white"
             >
-              Learn More
-            </a>
+              {t('learn_more')}
+            </Link>
           </div>
         </div>
       </div>

@@ -11,11 +11,8 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
-  },
-  realtime: {
-    heartbeatIntervalMs: 10000,
-    timeoutMs: 60000
+    detectSessionInUrl: true,
+    storage: localStorage
   }
 })
 
@@ -32,31 +29,6 @@ export const getProfile = async (userId) => {
     .eq('id', userId)
     .single()
   return { data, error }
-}
-
-export const uploadProductImage = async (file) => {
-  const fileExt = file.name.split('.').pop()
-  const fileName = `${Math.random()}.${fileExt}`
-  const filePath = `${fileName}`
-
-  const { data, error } = await supabase
-    .storage
-    .from('product-images')
-    .upload(filePath, file)
-
-  if (error) throw error
-
-  return supabase
-    .storage
-    .from('product-images')
-    .getPublicUrl(data.path)
-}
-
-export const getProductImageUrl = (path) => {
-  return supabase
-    .storage
-    .from('product-images')
-    .getPublicUrl(path)
 }
 
 export { supabase }

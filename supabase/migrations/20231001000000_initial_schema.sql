@@ -1,7 +1,8 @@
 -- Enable required extensions
 create extension if not exists "uuid-ossp";
+create extension if not exists "pgcrypto";
 
--- Users Table
+-- Users Table with Role Management
 create table if not exists profiles (
   id uuid primary key default uuid_generate_v4(),
   email text unique not null,
@@ -10,7 +11,7 @@ create table if not exists profiles (
   address text,
   city text,
   zip_code text,
-  role text not null default 'customer' check (role in ('admin', 'customer', 'guest')),
+  role text not null default 'customer' check (role in ('customer', 'guest-buyer', 'admin')),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone
 );
@@ -51,6 +52,7 @@ create table if not exists payments (
   currency text not null default 'GEL',
   method text not null check (method in ('bog', 'tbc', 'apple', 'google', 'stripe')),
   status text not null check (status in ('pending', 'success', 'failed')),
+  destination text, -- Stores IBAN or payment destination
   error text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -82,6 +84,7 @@ create index if not exists idx_products_category on products(category);
 create index if not exists idx_orders_user_id on orders(user_id);
 create index if not exists idx_payments_order_id on payments(order_id);
 create index if not exists idx_reviews_product_id on reviews(product_id);
+create index if not exists idx_contact_messages_status on contact_messages(status);
 
 -- Enable Row Level Security
 alter table profiles enable row level security;
@@ -99,7 +102,18 @@ using (auth.uid() = id);
 
 create policy "Users can update their own profile"
 on profiles for update
-using (auth.uid() = id);
+using (auth.uid() = id)
+with check (
+  -- Prevent role changes
+  role = (select role from profiles where id = auth.uid())
+);
+
+create policy "Admin can view all profiles"
+on profiles for select
+using (exists (
+  select 1 from profiles
+  where profiles.id = auth.uid() and profiles.role = 'admin'
+));
 
 -- Products
 create policy "Public read access"
@@ -168,7 +182,102 @@ using (bucket_id = 'product-images');
 
 create policy "Admin write access for product images"
 on storage.objects for insert
-with check (bucket_id = 'product-images' and exists (
-  select 1 from profiles
-  where profiles.id = auth.uid() and profiles.role = 'admin'
-));
+with check (
+  bucket_id = 'product-images' and exists (
+    select 1 from profiles
+    where profiles.id = auth.uid() and profiles.role = 'admin'
+  )
+);
+
+-- Function to prevent role changes
+create or replace function prevent_role_change()
+returns trigger as $$
+begin
+  if old.role is distinct from new.role then
+    raise exception 'Role changes are not allowed' using errcode = 'P0001';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger prevent_role_change_trigger
+before update on profiles
+for each row
+execute function prevent_role_change();
+
+-- Function to enforce admin-only role assignment
+create or replace function enforce_admin_role_assignment()
+returns trigger as $$
+begin
+  if new.role = 'admin' and not exists (
+    select 1 from profiles
+    where id = auth.uid() and role = 'admin'
+  ) then
+    raise exception 'Only admins can assign admin role' using errcode = 'P0002';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger enforce_admin_role_assignment_trigger
+before insert or update on profiles
+for each row
+execute function enforce_admin_role_assignment();
+
+-- Function to update product stock after order
+create or replace function update_product_stock()
+returns trigger as $$
+declare
+  item record;
+begin
+  for item in select * from jsonb_array_elements(new.items) loop
+    update products
+    set stock = stock - (item->>'quantity')::int
+    where id = (item->>'product_id')::uuid;
+  end loop;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger update_product_stock_trigger
+after insert on orders
+for each row
+execute function update_product_stock();
+
+-- Function to validate IBAN
+create or replace function validate_iban(iban text)
+returns boolean as $$
+begin
+  return iban ~ '^GE\d{2}[A-Z]{2}\d{16}$';
+end;
+$$ language plpgsql;
+
+-- Function to log payment errors
+create or replace function log_payment_error()
+returns trigger as $$
+begin
+  if new.status = 'failed' then
+    insert into error_logs (type, message, details)
+    values ('payment_error', new.error, jsonb_build_object(
+      'payment_id', new.id,
+      'order_id', new.order_id,
+      'method', new.method
+    ));
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger log_payment_error_trigger
+after insert or update on payments
+for each row
+execute function log_payment_error();
+
+-- Error Logs Table
+create table if not exists error_logs (
+  id uuid primary key default uuid_generate_v4(),
+  type text not null,
+  message text not null,
+  details jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);

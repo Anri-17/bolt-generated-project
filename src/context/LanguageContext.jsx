@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 
 const translations = {
   en: {
@@ -190,7 +190,15 @@ const translations = {
 const LanguageContext = createContext()
 
 export const LanguageProvider = ({ children }) => {
-  const [language, setLanguage] = useState('ka')
+  const [language, setLanguage] = useState(() => {
+    // Get language from localStorage or default to 'ka'
+    return localStorage.getItem('language') || 'ka'
+  })
+
+  useEffect(() => {
+    // Save language preference to localStorage
+    localStorage.setItem('language', language)
+  }, [language])
 
   const t = (key, params) => {
     let translation = translations[language][key] || key
