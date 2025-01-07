@@ -5,12 +5,13 @@ import ProductsPage from '../pages/ProductsPage'
 import ContactPage from '../pages/ContactPage'
 import CartPage from '../pages/CartPage'
 import AccountPage from '../pages/AccountPage'
+import AdminPage from '../pages/AdminPage'
 import LearnMorePage from '../pages/LearnMorePage'
 import NotFoundPage from '../pages/NotFoundPage'
 import { useAuth } from '../context/AuthContext'
 
 function AppRoutes() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   
   return (
     <Routes>
@@ -20,8 +21,8 @@ function AppRoutes() {
       <Route path="/cart" element={<CartPage />} />
       <Route path="/account" element={<AccountPage />} />
       <Route path="/about" element={<LearnMorePage />} />
-      {user && (
-        <Route path="/admin" element={<NotFoundPage />} />
+      {role === 'admin' && (
+        <Route path="/admin" element={<AdminPage />} />
       )}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
