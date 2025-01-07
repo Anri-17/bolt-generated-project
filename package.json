@@ -1,12 +1,14 @@
 {
-  "name": "football-ecom",
+  "name": "ansa-ecom",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@stripe/stripe-js": "^1.54.2",
@@ -23,7 +25,11 @@
     "@types/react-dom": "^18.0.11",
     "@vitejs/plugin-react": "^3.1.0",
     "autoprefixer": "^10.4.14",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
     "postcss": "^8.4.24",
+    "prettier": "^3.1.1",
     "tailwindcss": "^3.3.2",
     "vite": "^4.5.5"
   }

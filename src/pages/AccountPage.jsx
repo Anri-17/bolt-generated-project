@@ -1,27 +1,32 @@
 import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
 
 export default function AccountPage() {
   const { t } = useLanguage()
-  const { user, signIn, signUp, signOut, loading } = useAuth()
+  const { user, signIn, signUp, signOut, loading, error } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
-  const [error, setError] = useState(null)
+  const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError(null)
-
     try {
       if (isSignUp) {
+        if (password !== confirmPassword) {
+          throw new Error(t('passwords_dont_match'))
+        }
         await signUp(email, password)
       } else {
         await signIn(email, password)
       }
+      navigate('/')
     } catch (err) {
-      setError(err.message)
+      console.error('Error during login/signup:', err)
+      // Handle error appropriately (e.g., display error message)
     }
   }
 
@@ -44,7 +49,7 @@ export default function AccountPage() {
                   className="input-field bg-gray-100 text-black"
                 />
               </div>
-              <button 
+              <button
                 onClick={signOut}
                 className="btn-outline-black w-full"
               >
@@ -95,12 +100,26 @@ export default function AccountPage() {
                 required
               />
             </div>
+            {isSignUp && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  {t('confirm_password')}
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="input-field text-black"
+                  required
+                />
+              </div>
+            )}
             <button
               type="submit"
               disabled={loading}
               className="btn-outline-black w-full"
             >
-              {loading ? t('processing') : isSignUp ? t('sign_up') : t('sign_in')}
+              {loading ? t('loading') : isSignUp ? t('sign_up') : t('sign_in')}
             </button>
           </form>
           <div className="mt-4 text-center">

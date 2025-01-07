@@ -79,12 +79,46 @@ create table if not exists contact_messages (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Wishlist Table
+create table if not exists wishlists (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references profiles(id) on delete cascade,
+  product_id uuid references products(id) on delete cascade,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, product_id)
+);
+
+-- Shopping Cart Table
+create table if not exists carts (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references profiles(id) on delete cascade,
+  product_id uuid references products(id) on delete cascade,
+  quantity integer not null check (quantity > 0),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone,
+  unique(user_id, product_id)
+);
+
+-- Notifications Table
+create table if not exists notifications (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references profiles(id) on delete cascade,
+  type text not null check (type in ('order', 'payment', 'system', 'promotion')),
+  title text not null,
+  message text not null,
+  read boolean not null default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
 -- Indexes for better performance
 create index if not exists idx_products_category on products(category);
 create index if not exists idx_orders_user_id on orders(user_id);
 create index if not exists idx_payments_order_id on payments(order_id);
 create index if not exists idx_reviews_product_id on reviews(product_id);
 create index if not exists idx_contact_messages_status on contact_messages(status);
+create index if not exists idx_wishlists_user_id on wishlists(user_id);
+create index if not exists idx_carts_user_id on carts(user_id);
+create index if not exists idx_notifications_user_id on notifications(user_id);
 
 -- Enable Row Level Security
 alter table profiles enable row level security;
@@ -93,6 +127,9 @@ alter table orders enable row level security;
 alter table payments enable row level security;
 alter table reviews enable row level security;
 alter table contact_messages enable row level security;
+alter table wishlists enable row level security;
+alter table carts enable row level security;
+alter table notifications enable row level security;
 
 -- Security Policies
 -- Profiles
@@ -170,6 +207,21 @@ using (exists (
   select 1 from profiles
   where profiles.id = auth.uid() and profiles.role = 'admin'
 ));
+
+-- Wishlists
+create policy "Users can manage their own wishlists"
+on wishlists for all
+using (user_id = auth.uid());
+
+-- Carts
+create policy "Users can manage their own carts"
+on carts for all
+using (user_id = auth.uid());
+
+-- Notifications
+create policy "Users can manage their own notifications"
+on notifications for all
+using (user_id = auth.uid());
 
 -- Set up storage for product images
 insert into storage.buckets (id, name)

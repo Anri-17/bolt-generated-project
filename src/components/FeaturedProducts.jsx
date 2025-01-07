@@ -7,10 +7,14 @@ export default function FeaturedProducts() {
   const { t } = useLanguage()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
       try {
+        setLoading(true)
+        setError(null)
+
         const { data, error } = await supabase
           .from('products')
           .select('*')
@@ -20,6 +24,7 @@ export default function FeaturedProducts() {
         if (error) throw error
         setProducts(data || [])
       } catch (error) {
+        setError(error.message)
         console.error('Error fetching featured products:', error)
       } finally {
         setLoading(false)
@@ -37,16 +42,31 @@ export default function FeaturedProducts() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="text-center text-red-500 py-8">
+        <p>Error loading featured products.</p>
+        <p>{error}</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="container mx-auto px-4 py-12">
-      <h2 className="text-3xl font-bold text-center mb-8 text-black">
+    <section className="featured-products-section py-12">
+      <h2 className="featured-products-title">
         {t('featured_products')}
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
+      <div className="featured-products-grid">
+        {products.length > 0 ? (
+          products.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))
+        ) : (
+          <p className="text-center text-gray-600 col-span-full">
+            {t('no_featured_products')}
+          </p>
+        )}
       </div>
-    </div>
+    </section>
   )
 }
