@@ -20,12 +20,14 @@ export default function FeaturedProducts() {
           .select('*')
           .eq('featured', true)
           .limit(4)
-        
-        if (error) throw error
+
+        if (error) {
+          throw error
+        }
         setProducts(data || [])
       } catch (error) {
-        setError(error.message)
         console.error('Error fetching featured products:', error)
+        setError(error.message)
       } finally {
         setLoading(false)
       }
@@ -53,20 +55,18 @@ export default function FeaturedProducts() {
 
   return (
     <section className="featured-products-section py-12">
-      <h2 className="featured-products-title">
-        {t('featured_products')}
-      </h2>
-      <div className="featured-products-grid">
-        {products.length > 0 ? (
-          products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))
-        ) : (
-          <p className="text-center text-gray-600 col-span-full">
-            {t('no_featured_products')}
-          </p>
-        )}
-      </div>
+      {products.length > 0 && ( // Conditionally render the heading and grid
+        <>
+          <h2 className="featured-products-title">
+            {t('featured_products')}
+          </h2>
+          <div className="featured-products-grid">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </>
+      )}
     </section>
   )
 }

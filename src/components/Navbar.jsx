@@ -4,36 +4,32 @@ import { useCart } from '../context/CartContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useAuth } from '../context/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
+import AdminPage from '../pages/AdminPage' // Correct import
+
 
 export default function Navbar() {
   const { t, language, setLanguage } = useLanguage()
   const { totalItems } = useCart()
-  const { user, role } = useAuth() || {}
+  const { profile } = useAuth()
   const location = useLocation()
-  
-  // State management
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  
-  // Refs for click outside detection
+  const [showAdminPanel, setShowAdminPanel] = useState(false) 
   const languageDropdownRef = useRef(null)
   const mobileMenuRef = useRef(null)
 
-  // Close dropdowns when route changes
   useEffect(() => {
     setShowLanguageDropdown(false)
     setMobileMenuOpen(false)
+    setShowAdminPanel(false) 
   }, [location.pathname])
 
-  // Handle clicks outside components
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (languageDropdownRef.current && 
-          !languageDropdownRef.current.contains(event.target)) {
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target)) {
         setShowLanguageDropdown(false)
       }
-      if (mobileMenuRef.current && 
-          !mobileMenuRef.current.contains(event.target)) {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
         setMobileMenuOpen(false)
       }
     }
@@ -53,7 +49,6 @@ export default function Navbar() {
     return language === 'en' ? '🇬🇧' : '🇬🇪'
   }
 
-  // Animation variants
   const mobileMenuVariants = {
     hidden: { x: '100%' },
     visible: { x: 0 },
@@ -74,25 +69,26 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center space-x-6">
-          {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
             <div className="flex space-x-6">
               <NavLink to="/" text={t('home')} />
               <NavLink to="/products" text={t('products')} />
               <NavLink to="/contact" text={t('contact')} />
-              {role === 'admin' && (
-                <NavLink to="/admin" text={t('admin_panel')} />
+              {profile?.role === 'admin' && (
+                <button
+                  onClick={() => setShowAdminPanel(true)}
+                  className="btn-outline-black"
+                >
+                  {t('admin_panel')}
+                </button>
               )}
             </div>
-
-            {/* Cart and Account Icons */}
             <div className="flex items-center space-x-4">
               <CartIcon totalItems={totalItems} />
               <AccountIcon />
             </div>
           </div>
 
-          {/* Language Switcher */}
           <div className="relative" ref={languageDropdownRef}>
             <button
               onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
@@ -101,7 +97,6 @@ export default function Navbar() {
             >
               <span className="text-2xl">{getCurrentFlag()}</span>
             </button>
-            
             <AnimatePresence>
               {showLanguageDropdown && (
                 <motion.div
@@ -133,7 +128,6 @@ export default function Navbar() {
             </AnimatePresence>
           </div>
 
-          {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden p-2 focus:outline-none hover:opacity-80 transition-opacity"
@@ -145,10 +139,9 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile Menu */}
         <AnimatePresence>
           {mobileMenuOpen && (
-            <motion.div 
+            <motion.div
               className="fixed inset-0 bg-white z-50 p-4"
               ref={mobileMenuRef}
               variants={mobileMenuVariants}
@@ -168,21 +161,88 @@ export default function Navbar() {
                   </svg>
                 </button>
               </div>
-              
+
               <div className="flex flex-col space-y-4 mt-4">
                 <MobileNavLink to="/" text={t('home')} onClick={() => setMobileMenuOpen(false)} />
                 <MobileNavLink to="/products" text={t('products')} onClick={() => setMobileMenuOpen(false)} />
                 <MobileNavLink to="/contact" text={t('contact')} onClick={() => setMobileMenuOpen(false)} />
-                {role === 'admin' && (
-                  <MobileNavLink to="/admin" text={t('admin_panel')} onClick={() => setMobileMenuOpen(false)} />
+                {profile?.role === 'admin' && (
+                  <button
+                    onClick={() => setShowAdminPanel(true)}
+                    className="text-black hover:text-hero transition-colors text-lg font-medium"
+                  >
+                    {t('admin_panel')}
+                  </button>
                 )}
-                
                 <div className="flex items-center space-x-4 mt-6">
                   <CartIcon totalItems={totalItems} onClick={() => setMobileMenuOpen(false)} />
                   <AccountIcon onClick={() => setMobileMenuOpen(false)} />
                 </div>
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {showAdminPanel && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-8 rounded-lg shadow-lg w-96">
+                <button onClick={() => setShowAdminPanel(false)} className="absolute top-4 right-4">
+                  &times;
+                </button>
+                <AdminPage />
+              </div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    </nav>
+  )
+}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              className="fixed inset-0 bg-white z-50 p-4"
+              ref={mobileMenuRef}
+              variants={mobileMenuVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 focus:outline-none hover:opacity-80 transition-opacity"
+                  aria-label="Close mobile menu"
+									</div>
+                  <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="flex flex-col space-y-4 mt-4">
+                <MobileNavLink to="/" text={t('home')} onClick={() => setMobileMenuOpen(false)} />
+                <MobileNavLink to="/products" text={t('products')} onClick={() => setMobileMenuOpen(false)} />
+                <MobileNavLink to="/contact" text={t('contact')} onClick={() => setMobileMenuOpen(false)} />
+                {profile?.role === 'admin' && (
+                  <button
+                    onClick={() => setShowAdminPanel(true)}
+                    className="text-black hover:text-hero transition-colors text-lg font-medium"
+                  >
+                    {t('admin_panel')}
+                  </button>
+                )}
+                <div className="flex items-center space-x-4 mt-6">
+                  <CartIcon totalItems={totalItems} onClick={() => setMobileMenuOpen(false)} />
+                  <AccountIcon onClick={() => setMobileMenuOpen(false)} />
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {showAdminPanel && (
+            <AdminPanelModal onClose={() => setShowAdminPanel(false)} />
           )}
         </AnimatePresence>
       </div>
@@ -193,8 +253,8 @@ export default function Navbar() {
 // Reusable NavLink component
 function NavLink({ to, text }) {
   return (
-    <Link 
-      to={to} 
+    <Link
+      to={to}
       className="text-black hover:text-hero transition-colors font-medium"
     >
       {text}
@@ -205,8 +265,8 @@ function NavLink({ to, text }) {
 // Reusable Mobile NavLink component
 function MobileNavLink({ to, text, onClick }) {
   return (
-    <Link 
-      to={to} 
+    <Link
+      to={to}
       onClick={onClick}
       className="text-black hover:text-hero transition-colors text-lg font-medium"
     >
@@ -218,8 +278,8 @@ function MobileNavLink({ to, text, onClick }) {
 // Cart Icon component
 function CartIcon({ totalItems, onClick }) {
   return (
-    <Link 
-      to="/cart" 
+    <Link
+      to="/cart"
       onClick={onClick}
       className="relative text-black hover:text-hero transition-colors"
       aria-label="Cart"
@@ -239,8 +299,8 @@ function CartIcon({ totalItems, onClick }) {
 // Account Icon component
 function AccountIcon({ onClick }) {
   return (
-    <Link 
-      to="/account" 
+    <Link
+      to="/account"
       onClick={onClick}
       className="text-black hover:text-hero transition-colors"
       aria-label="Account"
@@ -249,5 +309,18 @@ function AccountIcon({ onClick }) {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
       </svg>
     </Link>
+  )
+}
+
+const AdminPanelModal = ({ onClose }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-8 rounded-lg shadow-lg w-96">
+        <button onClick={onClose} className="absolute top-4 right-4">
+          &times;
+        </button>
+        <AdminPage />
+      </div>
+    </div>
   )
 }

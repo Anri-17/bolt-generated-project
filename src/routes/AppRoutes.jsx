@@ -11,8 +11,8 @@ import NotFoundPage from '../pages/NotFoundPage'
 import { useAuth } from '../context/AuthContext'
 
 function AppRoutes() {
-  const { user, role } = useAuth()
-  
+  const { profile } = useAuth()
+
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
@@ -21,7 +21,8 @@ function AppRoutes() {
       <Route path="/cart" element={<CartPage />} />
       <Route path="/account" element={<AccountPage />} />
       <Route path="/about" element={<LearnMorePage />} />
-      {role === 'admin' && (
+      {/* Conditionally render the admin route */}
+      {profile?.role === 'admin' && (
         <Route path="/admin" element={<AdminPage />} />
       )}
       <Route path="*" element={<NotFoundPage />} />

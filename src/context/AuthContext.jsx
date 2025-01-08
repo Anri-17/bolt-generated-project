@@ -12,143 +12,154 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate()
 
   useEffect(() => {
-    let authSubscription
-
-    const initializeAuth = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        if (sessionError) {
-          console.error("Error getting session:", sessionError)
-          throw sessionError
+    const sessionCheck = async () => {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) {
+        console.error("Error checking session:", sessionError)
+        setError("An unexpected error occurred while checking your session. Please try again later.")
+      } else if (session) {
+        setUser(session.user)
+        try {
+          await fetchProfile(session.user.id)
+        } catch (profileError) {
+          console.error("Error fetching profile:", profileError)
+          //Handle profile fetch error without displaying a generic message.  Consider redirecting to profile creation or showing a custom message.
         }
-
-        // Set user and profile only if session exists
-        if (session?.user) {
-          setUser(session.user)
-          await handleProfile(session.user)
-        } else {
-          setUser(null)
-          setProfile(null)
-        }
-      } catch (error) {
-        setError(error.message)
-        console.error('Error initializing auth:', error)
-      } finally {
-        setLoading(false)
+      } else {
+        setUser(null)
+        setProfile(null)
       }
+      setLoading(false)
     }
 
-    initializeAuth()
+    let authListener = null;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        try {
-          setLoading(true)
-          setError(null)
-
-          if (session?.user) {
-            setUser(session.user)
-            await handleProfile(session.user)
-            if (event === 'SIGNED_IN') navigate('/')
-          } else {
-            setUser(null)
-            setProfile(null)
-            navigate('/account')
-          }
-        } catch (error) {
-          setError(error.message)
-          console.error('Auth state change error:', error)
-        } finally {
-          setLoading(false)
+    const setupAuthListener = () => {
+      authListener = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN') {
+          setUser(session.user)
+          fetchProfile(session.user.id)
+            .then(profileData => {
+              if (profileData) {
+                setProfile(profileData);
+                navigate('/');
+              } else {
+                console.warn("No profile found for user:", session.user.id);
+                //Handle missing profile (e.g., redirect to profile creation)
+                setError("Your profile could not be found. Please contact support.");
+              }
+            })
+            .catch(profileError => {
+              console.error("Error fetching profile after sign-in:", profileError)
+              //Handle profile fetch error without displaying a generic message
+              //You might want to redirect to a profile creation page or show a custom message
+              //For now, we'll just log the error and continue
+            })
+          
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null)
+          setProfile(null)
+          navigate('/account')
         }
-      }
-    )
+      })
+    }
 
-    authSubscription = subscription
+    setupAuthListener()
+    sessionCheck()
 
     return () => {
-      if (authSubscription) {
-        authSubscription.unsubscribe()
+      if (authListener?.unsubscribe) {
+        authListener.unsubscribe()
       }
     }
   }, [navigate])
 
-  const handleProfile = async (user) => {
+  const fetchProfile = async (userId) => {
     try {
-      if (!user) return null
-
-      const { data: existingProfile, error: fetchError } = await supabase
+      console.log("Fetching profile for userId:", userId);
+      const { data, error } = await supabase
         .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+        .select('*, roles(*)') // Select the role from the roles table
+        .eq('id', userId)
+        .single();
 
-      if (fetchError || !existingProfile) {
-        const { data: newProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert([{
-            id: user.id,
-            email: user.email,
-            full_name: '',
-            avatar_url: '',
-            role: 'customer'
-          }])
-          .select()
-          .single()
-
-        if (createError) throw createError
-        setProfile(newProfile)
-        return newProfile
+      if (error) {
+        console.error("Error fetching profile:", error);
+        // Handle specific error scenarios (as before)
+        throw error;
       }
+      // Extract the role from the roles relationship
+      const role = data.roles?.[0]?.name || 'customer'; // Default to 'customer' if no role is found
 
-      setProfile(existingProfile)
-      return existingProfile
+      setProfile({ ...data, role }); // Add the role to the profile object
+      return { ...data, role };
     } catch (error) {
-      setError(error.message)
-      console.error('Error handling profile:', error)
-      throw error
+      console.error("Unexpected error in fetchProfile:", error);
+      throw error;
     }
-  }
+  };
 
-  const signIn = async (email, password) => {
+const signIn = async (email, password) => {
+  try {
+    setLoading(true);
+    setError(null);
+    const { user, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (authError) {
+      console.error("Supabase Auth Error:", authError);
+      // Handle specific Supabase auth errors
+      if (authError.message.includes("Incorrect credentials")) {
+        setError("Incorrect email or password.");
+      } else if (authError.message.includes("Email not found")) {
+        setError("Email not found.");
+      } else if (authError.message.includes("User is blocked")) {
+        setError("Your account is blocked. Please contact support.");
+      } else {
+        setError("An unexpected Supabase authentication error occurred. Please try again later.");
+      }
+      return; // Stop execution if there's a Supabase auth error
+    }
+
+    //Successful authentication, now fetch the profile
+    const profileData = await fetchProfile(user.id);
+    if (profileData) {
+      setProfile(profileData);
+      navigate('/');
+    } else {
+      console.warn("No profile found for user:", user.id);
+      // Handle missing profile (e.g., redirect to profile creation)
+      setError("Your profile could not be found. Please contact support.");
+    }
+  } catch (error) {
+    console.error("Unexpected error during sign-in:", error);
+    //This catch block should only execute if there's an unexpected error outside the Supabase auth call
+    //Consider logging the error to a service like Sentry for more detailed analysis
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const signUp = async (email, password, fullName) => {
     try {
       setLoading(true)
       setError(null)
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      })
-
-      if (error) throw error
-      return data
+      const { user, error } = await supabase.auth.signUp({ email, password })
+      if (error) {
+        console.error("Supabase Sign-up Error:", error)
+        setError("Sign-up failed. Please try again later.")
+        throw error;
+      }
+      await supabase
+        .from('profiles')
+        .insert([{ id: user.id, email, full_name: fullName }])
+        .then(() => fetchProfile(user.id))
+        .catch((error) => {
+          console.error("Error creating profile:", error)
+          setError("An unexpected error occurred while creating your profile.")
+        })
     } catch (error) {
-      setError(error.message)
-      throw error
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const signUp = async (email, password) => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password
-      })
-
-      if (error) throw error
-      return data
-    } catch (error) {
-      setError(error.message)
-      throw error
+      console.error("Sign-up Error:", error)
+      setError("An unexpected error occurred during sign-up.")
     } finally {
       setLoading(false)
     }
@@ -158,32 +169,17 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true)
       setError(null)
-
       await supabase.auth.signOut()
-      setUser(null)
-      setProfile(null)
-      navigate('/account')
     } catch (error) {
-      setError(error.message)
-      console.error('Error signing out:', error)
-      throw error
+      console.error("Supabase Sign-out Error:", error)
+      setError("Sign-out failed. Please try again later.")
     } finally {
       setLoading(false)
     }
   }
 
-  const value = {
-    user,
-    profile,
-    loading,
-    error,
-    signIn,
-    signUp,
-    signOut
-  }
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, profile, loading, error, setError, setLoading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   )
