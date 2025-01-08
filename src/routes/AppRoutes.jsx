@@ -25,7 +25,7 @@ function AppRoutes() {
       {/* Protected Admin Route */}
       <Route 
         path="/admin" 
-        element={isAdmin() ? <AdminPage /> : <Navigate to="/" />} 
+        element={isAdmin ? <AdminPage /> : <Navigate to="/" />} 
       />
       
       <Route path="*" element={<NotFoundPage />} />

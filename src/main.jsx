@@ -16,7 +16,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'))
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
+      <AuthProvider> {/* Ensure AuthProvider wraps AppRoutes */}
         <LanguageProvider>
           <CartProvider>
             <App />
@@ -26,16 +26,3 @@ root.render(
     </BrowserRouter>
   </React.StrictMode>
 )
-
-// Error handling for failed render
-if (process.env.NODE_ENV === 'development') {
-  // Development error handling
-  window.addEventListener('error', (event) => {
-    console.error('Uncaught error:', event.error)
-  })
-
-  // Unhandled promise rejections
-  window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled rejection:', event.reason)
-  })
-}

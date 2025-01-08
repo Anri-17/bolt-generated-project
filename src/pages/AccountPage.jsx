@@ -5,7 +5,15 @@ import { useLanguage } from '../context/LanguageContext'
 
 export default function AccountPage() {
   const { t } = useLanguage()
-  const { user, signIn, signUp, signOut, loading, error, setError, setLoading } = useAuth()
+  const { 
+    user, 
+    signIn, 
+    signUp, 
+    signOut, 
+    loading, 
+    error, 
+    setError 
+  } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -16,38 +24,33 @@ export default function AccountPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-		setError(null) // Clear any previous auth errors
+    setError(null)
     setLocalError(null)
-		setLoading(true)// Clear any previous local errors
 
     try {
       if (isSignUp) {
+        // Validate sign up form
         if (password !== confirmPassword) {
           throw new Error(t('passwords_dont_match'))
         }
         if (!fullName.trim()) {
           throw new Error(t('full_name_required'))
         }
-        await signUp(email, password, fullName)
+        
+        const { error: signUpError } = await signUp(email, password, fullName)
+        if (signUpError) throw signUpError
+        
         navigate('/')
       } else {
-        await signIn(email, password)
+        // Handle sign in
+        const { error: signInError } = await signIn(email, password)
+        if (signInError) throw signInError
+        
         navigate('/')
       }
-    } catch (err) {
-      console.error('Error during login/signup:', err)
-      // More specific error handling
-      if (err.message.startsWith('Failed to create profile')) {
-        setLocalError(err.message) // Handle profile creation errors separately
-      } else if (err.message.includes('Incorrect credentials')) {
-        setError(t('incorrect_credentials'))
-      } else if (err.message === 'passwords_dont_match') {
-        setLocalError(t('passwords_dont_match'))
-      } else {
-        setError(t('generic_error')) // Generic error message for other cases
-      }
-    } finally {
-      setLoading(false)
+    } catch (error) {
+      console.error('Authentication error:', error)
+      setLocalError(error.message)
     }
   }
 
@@ -70,7 +73,10 @@ export default function AccountPage() {
                   className="input-field bg-gray-100 text-black"
                 />
               </div>
-              <button onClick={signOut} className="btn-outline-black w-full">
+              <button 
+                onClick={signOut} 
+                className="btn-outline-black w-full"
+              >
                 {t('sign_out')}
               </button>
               {error && (
@@ -161,7 +167,7 @@ export default function AccountPage() {
               disabled={loading}
               className="btn-outline-black w-full"
             >
-              {loading ? t('loading') : isSignUp ? t('sign_up') : t('sign_in')}
+              {loading ? t('processing') : isSignUp ? t('sign_up') : t('sign_in')}
             </button>
           </form>
           <div className="mt-4 text-center">
