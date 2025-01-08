@@ -16,16 +16,28 @@ function AppRoutes() {
 
   return (
     <Routes>
+      {/* Public Routes */}
       <Route path="/" element={<HomePage />} />
       <Route path="/products" element={<ProductsPage />} />
       <Route path="/contact" element={<ContactPage />} />
       <Route path="/cart" element={<CartPage />} />
       <Route path="/account" element={<AccountPage />} />
       <Route path="/about" element={<LearnMorePage />} />
-      
+
       {/* Admin Routes */}
-      <Route path="/admin" element={profile?.role === 'admin' ? <AdminPage /> : <AdminLoginPage />} />
-      
+      <Route
+        path="/admin"
+        element={
+          profile?.role === 'admin' ? (
+            <AdminPage />
+          ) : (
+            <Navigate to="/admin/login" replace />
+          )
+        }
+      />
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+
+      {/* Catch-all Route */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )

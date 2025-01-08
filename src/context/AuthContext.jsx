@@ -25,10 +25,6 @@ export function AuthProvider({ children }) {
             
           if (profile) {
             setProfile(profile)
-            // Redirect to admin page if user is admin and on the admin login page
-            if (profile.role === 'admin' && window.location.pathname === '/admin/login') {
-              navigate('/admin')
-            }
           }
         }
       } catch (error) {
@@ -65,10 +61,6 @@ export function AuthProvider({ children }) {
               setProfile(newProfile)
             } else {
               setProfile(profile)
-              // Redirect to admin page if user is admin and on the admin login page
-              if (profile.role === 'admin' && window.location.pathname === '/admin/login') {
-                navigate('/admin')
-              }
             }
           } else {
             setUser(null)
@@ -111,7 +103,6 @@ export function AuthProvider({ children }) {
 
       setUser(data.user)
       setProfile(profile)
-      navigate('/admin') // Redirect to admin page after successful login
       return { user: data.user }
     } catch (error) {
       setAuthError(error.message)
@@ -137,7 +128,6 @@ export function AuthProvider({ children }) {
         .single()
         
       setProfile(profile)
-      navigate('/')
       return { user: data.user }
     } catch (error) {
       setAuthError(error.message)
@@ -189,7 +179,6 @@ export function AuthProvider({ children }) {
 
       setUser(data.user)
       setProfile(profile)
-      navigate('/')
       return { user: data.user }
     } catch (error) {
       console.error('Sign up error:', error)
