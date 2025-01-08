@@ -6,64 +6,167 @@ const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState(null)
+  const [authError, setAuthError] = useState(null)
   const navigate = useNavigate()
 
+  // Initialize auth state
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setLoading(false)
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUser(session.user)
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+            
+          if (profile) {
+            setProfile(profile)
+          }
+        }
+      } catch (error) {
+        console.error('Initialization error:', error)
+        setAuthError(error.message)
+      }
     }
 
-    getSession()
+    initializeAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
-        setLoading(false)
-        
-        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-          navigate('/')
+        try {
+          if (session?.user) {
+            setUser(session.user)
+            
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single()
+
+            if (!profile || profileError) {
+              const { data: newProfile } = await supabase
+                .from('profiles')
+                .insert({
+                  id: session.user.id,
+                  email: session.user.email,
+                  role: 'user'
+                })
+                .select()
+                .single()
+
+              setProfile(newProfile)
+            } else {
+              setProfile(profile)
+            }
+          } else {
+            setUser(null)
+            setProfile(null)
+          }
+        } catch (error) {
+          console.error('Auth state change error:', error)
+          setAuthError(error.message)
         }
       }
     )
 
     return () => subscription?.unsubscribe()
-  }, [navigate])
+  }, [])
 
   const value = {
     user,
-    loading,
+    profile,
+    authError,
+    setAuthError,
+    isAdmin: () => profile?.role === 'admin',
     signIn: async (email, password) => {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      })
-      if (!error) {
-        navigate('/')
+      setAuthError(null)
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        })
+        
+        if (error) throw error
+        
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single()
+          
+        setProfile(profile)
+        // Use setTimeout to ensure navigation happens after state updates
+        setTimeout(() => navigate('/'), 0)
+        return { user: data.user }
+      } catch (error) {
+        setAuthError(error.message)
+        return { error }
       }
-      return { user: data?.user, error }
     },
     signOut: async () => {
-      await supabase.auth.signOut()
-      navigate('/')
-    },
-    signUp: async (email, password) => {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password
-      })
-      if (!error) {
-        navigate('/')
+      try {
+        // Clear local state first
+        setUser(null)
+        setProfile(null)
+        
+        // Sign out from Supabase
+        await supabase.auth.signOut()
+        
+        // Use setTimeout to ensure navigation happens after state updates
+        setTimeout(() => navigate('/'), 0)
+      } catch (error) {
+        console.error('Sign out error:', error)
+        setAuthError(error.message)
       }
-      return { user: data?.user, error }
+    },
+    signUp: async (email, password, fullName) => {
+      setAuthError(null)
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName
+            }
+          }
+        })
+
+        if (error) throw error
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            email: data.user.email,
+            full_name: fullName,
+            role: 'user'
+          })
+          .select()
+          .single()
+
+        if (profileError) throw profileError
+
+        setUser(data.user)
+        setProfile(profile)
+        // Use setTimeout to ensure navigation happens after state updates
+        setTimeout(() => navigate('/'), 0)
+        return { user: data.user }
+      } catch (error) {
+        console.error('Sign up error:', error)
+        setAuthError(error.message)
+        return { error }
+      }
     }
   }
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   )
 }

@@ -11,46 +11,44 @@ export default function AccountPage() {
     signUp, 
     signOut, 
     loading, 
-    error, 
-    setError 
+    authError,
+    setAuthError
   } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
-  const [localError, setLocalError] = useState(null)
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError(null)
-    setLocalError(null)
+    setAuthError(null)
 
     try {
       if (isSignUp) {
-        // Validate sign up form
         if (password !== confirmPassword) {
-          throw new Error(t('passwords_dont_match'))
+          setAuthError(t('passwords_dont_match'))
+          return
         }
         if (!fullName.trim()) {
-          throw new Error(t('full_name_required'))
+          setAuthError(t('full_name_required'))
+          return
         }
         
-        const { error: signUpError } = await signUp(email, password, fullName)
-        if (signUpError) throw signUpError
-        
-        navigate('/')
+        const { error } = await signUp(email, password, fullName)
+        if (error) throw error
       } else {
-        // Handle sign in
-        const { error: signInError } = await signIn(email, password)
-        if (signInError) throw signInError
-        
-        navigate('/')
+        const { error } = await signIn(email, password)
+        if (error) throw error
       }
     } catch (error) {
-      console.error('Authentication error:', error)
-      setLocalError(error.message)
+      // Handle specific error messages
+      if (error.message.includes('Invalid login credentials')) {
+        setAuthError(t('incorrect_credentials'))
+      } else {
+        setAuthError(error.message)
+      }
     }
   }
 
@@ -79,9 +77,9 @@ export default function AccountPage() {
               >
                 {t('sign_out')}
               </button>
-              {error && (
+              {authError && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4">
-                  {error}
+                  {authError}
                 </div>
               )}
             </div>
@@ -99,14 +97,9 @@ export default function AccountPage() {
           <h2 className="text-xl font-bold mb-4 text-black">
             {isSignUp ? t('sign_up') : t('sign_in')}
           </h2>
-          {localError && (
+          {authError && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {localError}
-            </div>
-          )}
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
+              {authError}
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">

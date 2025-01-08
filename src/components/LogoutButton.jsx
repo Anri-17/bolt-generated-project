@@ -6,21 +6,21 @@ export default function LogoutButton() {
   const { signOut } = useAuth()
   const navigate = useNavigate()
 
-  const handleLogout = async () => {
+  const handleSignOut = async () => {
     try {
       await signOut()
-      navigate('/login') // Redirect to login page after logout
+      navigate('/') // Ensure navigation after sign out
     } catch (error) {
-      console.error('Error during logout:', error)
+      console.error('Sign out failed:', error)
     }
   }
 
   return (
     <button
-      onClick={handleLogout}
+      onClick={handleSignOut}
       className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
     >
-      Log Out
+      Sign Out
     </button>
   )
 }
