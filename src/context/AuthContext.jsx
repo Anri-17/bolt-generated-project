@@ -22,13 +22,9 @@ export function AuthProvider({ children }) {
             .select('*')
             .eq('id', session.user.id)
             .single()
-            
-          if (profile) {
-            setProfile(profile)
-          }
+          setProfile(profile || null)
         }
       } catch (error) {
-        console.error('Initialization error:', error)
         setAuthError(error.message)
       }
     }
@@ -40,34 +36,17 @@ export function AuthProvider({ children }) {
         try {
           if (session?.user) {
             setUser(session.user)
-            
-            const { data: profile, error: profileError } = await supabase
+            const { data: profile } = await supabase
               .from('profiles')
               .select('*')
               .eq('id', session.user.id)
               .single()
-
-            if (!profile || profileError) {
-              const { data: newProfile } = await supabase
-                .from('profiles')
-                .insert({
-                  id: session.user.id,
-                  email: session.user.email,
-                  role: 'user'
-                })
-                .select()
-                .single()
-
-              setProfile(newProfile)
-            } else {
-              setProfile(profile)
-            }
+            setProfile(profile || null)
           } else {
             setUser(null)
             setProfile(null)
           }
         } catch (error) {
-          console.error('Auth state change error:', error)
           setAuthError(error.message)
         }
       }
@@ -78,8 +57,8 @@ export function AuthProvider({ children }) {
 
   // Admin login
   const adminLogin = async (email, password) => {
-    setAuthError(null)
     try {
+      setAuthError(null)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -87,16 +66,13 @@ export function AuthProvider({ children }) {
       
       if (error) throw error
       
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', data.user.id)
         .single()
 
-      if (profileError) throw profileError
-
-      // Check if user is admin
-      if (profile.role !== 'admin') {
+      if (profile?.role !== 'admin') {
         await supabase.auth.signOut()
         throw new Error('Only admin users can access this page')
       }
@@ -112,8 +88,8 @@ export function AuthProvider({ children }) {
 
   // Regular sign in
   const signIn = async (email, password) => {
-    setAuthError(null)
     try {
+      setAuthError(null)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -138,20 +114,19 @@ export function AuthProvider({ children }) {
   // Sign out
   const signOut = async () => {
     try {
+      await supabase.auth.signOut()
       setUser(null)
       setProfile(null)
-      await supabase.auth.signOut()
       navigate('/')
     } catch (error) {
-      console.error('Sign out error:', error)
       setAuthError(error.message)
     }
   }
 
   // Sign up
   const signUp = async (email, password, fullName) => {
-    setAuthError(null)
     try {
+      setAuthError(null)
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -164,7 +139,7 @@ export function AuthProvider({ children }) {
 
       if (error) throw error
 
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .insert({
           id: data.user.id,
@@ -175,13 +150,10 @@ export function AuthProvider({ children }) {
         .select()
         .single()
 
-      if (profileError) throw profileError
-
       setUser(data.user)
       setProfile(profile)
       return { user: data.user }
     } catch (error) {
-      console.error('Sign up error:', error)
       setAuthError(error.message)
       return { error }
     }

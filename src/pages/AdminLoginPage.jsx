@@ -1,26 +1,38 @@
 import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useLanguage } from '../context/LanguageContext'
 import { useNavigate } from 'react-router-dom'
+import { useLanguage } from '../context/LanguageContext'
 
 export default function AdminLoginPage() {
   const { t } = useLanguage()
-  const { adminLogin, authError } = useAuth()
+  const { signIn } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
     try {
-      const { error } = await adminLogin(email, password)
-      if (error) throw error
-
-      // Redirect to admin page after successful login
-      navigate('/admin')
-    } catch (error) {
-      console.error('Login error:', error)
+      setError(null) // Clear any previous errors
+      setLoading(true) // Show "Logging in..."
+      
+      // Perform login
+      const { error: loginError } = await signIn(email, password)
+      
+      // If login fails, throw the error
+      if (loginError) {
+        throw loginError
+      }
+      
+      // If login is successful, redirect to /admin immediately
+      navigate('/admin', { replace: true }) // Use replace to prevent going back to login
+    } catch (err) {
+      console.error('Login error:', err)
+      setError(err.message || 'Login failed. Please try again.')
+    } finally {
+      setLoading(false) // Reset loading state
     }
   }
 
@@ -30,18 +42,19 @@ export default function AdminLoginPage() {
         <h2 className="text-2xl font-bold mb-6 text-center text-black">
           {t('admin_login')}
         </h2>
-        {authError && (
+        {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4">
-            {authError}
+            {error}
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-black">
+            <label htmlFor="email" className="block text-sm font-medium text-black">
               {t('email')}
             </label>
             <input
               type="email"
+              id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input-field w-full text-black"
@@ -49,11 +62,12 @@ export default function AdminLoginPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-black">
+            <label htmlFor="password" className="block text-sm font-medium text-black">
               {t('password')}
             </label>
             <input
               type="password"
+              id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input-field w-full text-black"
@@ -62,9 +76,10 @@ export default function AdminLoginPage() {
           </div>
           <button
             type="submit"
+            disabled={loading}
             className="btn-outline-black w-full text-black hover:bg-black hover:text-white"
           >
-            {t('login')}
+            {loading ? t('logging_in') : t('login')}
           </button>
         </form>
       </div>
