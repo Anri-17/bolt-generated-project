@@ -6,12 +6,13 @@ import ContactPage from '../pages/ContactPage'
 import CartPage from '../pages/CartPage'
 import AccountPage from '../pages/AccountPage'
 import AdminPage from '../pages/AdminPage'
+import AdminLoginPage from '../pages/AdminLoginPage'
 import LearnMorePage from '../pages/LearnMorePage'
 import NotFoundPage from '../pages/NotFoundPage'
 import { useAuth } from '../context/AuthContext'
 
 function AppRoutes() {
-  const { isAdmin } = useAuth()
+  const { profile } = useAuth()
 
   return (
     <Routes>
@@ -22,11 +23,8 @@ function AppRoutes() {
       <Route path="/account" element={<AccountPage />} />
       <Route path="/about" element={<LearnMorePage />} />
       
-      {/* Protected Admin Route */}
-      <Route 
-        path="/admin" 
-        element={isAdmin ? <AdminPage /> : <Navigate to="/" />} 
-      />
+      {/* Admin Routes */}
+      <Route path="/admin" element={profile?.role === 'admin' ? <AdminPage /> : <AdminLoginPage />} />
       
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

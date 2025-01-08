@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '../supabaseClient'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../supabaseClient'
 
 const AuthContext = createContext()
 
@@ -76,92 +76,133 @@ export function AuthProvider({ children }) {
     return () => subscription?.unsubscribe()
   }, [])
 
+  // Regular sign in
+  const signIn = async (email, password) => {
+    setAuthError(null)
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      
+      if (error) throw error
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single()
+        
+      setProfile(profile)
+      navigate('/')
+      return { user: data.user }
+    } catch (error) {
+      setAuthError(error.message)
+      return { error }
+    }
+  }
+
+  // Admin login - uses same logic as signIn but with role check
+  const adminLogin = async (email, password) => {
+    setAuthError(null)
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      
+      if (error) throw error
+      
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single()
+
+      if (profileError) throw profileError
+
+      // Only difference: check for admin role
+      if (profile.role !== 'admin') {
+        await supabase.auth.signOut()
+        throw new Error('Only admin users can access this page')
+      }
+
+      setUser(data.user)
+      setProfile(profile)
+      navigate('/admin')
+      return { user: data.user }
+    } catch (error) {
+      setAuthError(error.message)
+      return { error }
+    }
+  }
+
+  // Sign out
+  const signOut = async () => {
+    try {
+      setUser(null)
+      setProfile(null)
+      await supabase.auth.signOut()
+      navigate('/')
+    } catch (error) {
+      console.error('Sign out error:', error)
+      setAuthError(error.message)
+    }
+  }
+
+  // Sign up
+  const signUp = async (email, password, fullName) => {
+    setAuthError(null)
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName
+          }
+        }
+      })
+
+      if (error) throw error
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: data.user.id,
+          email: data.user.email,
+          full_name: fullName,
+          role: 'user'
+        })
+        .select()
+        .single()
+
+      if (profileError) throw profileError
+
+      setUser(data.user)
+      setProfile(profile)
+      navigate('/')
+      return { user: data.user }
+    } catch (error) {
+      console.error('Sign up error:', error)
+      setAuthError(error.message)
+      return { error }
+    }
+  }
+
+  // Check if user is admin
+  const isAdmin = () => profile?.role === 'admin'
+
   const value = {
     user,
     profile,
     authError,
     setAuthError,
-    isAdmin: () => profile?.role === 'admin',
-    signIn: async (email, password) => {
-      setAuthError(null)
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        })
-        
-        if (error) throw error
-        
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single()
-          
-        setProfile(profile)
-        // Use setTimeout to ensure navigation happens after state updates
-        setTimeout(() => navigate('/'), 0)
-        return { user: data.user }
-      } catch (error) {
-        setAuthError(error.message)
-        return { error }
-      }
-    },
-    signOut: async () => {
-      try {
-        // Clear local state first
-        setUser(null)
-        setProfile(null)
-        
-        // Sign out from Supabase
-        await supabase.auth.signOut()
-        
-        // Use setTimeout to ensure navigation happens after state updates
-        setTimeout(() => navigate('/'), 0)
-      } catch (error) {
-        console.error('Sign out error:', error)
-        setAuthError(error.message)
-      }
-    },
-    signUp: async (email, password, fullName) => {
-      setAuthError(null)
-      try {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName
-            }
-          }
-        })
-
-        if (error) throw error
-
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            email: data.user.email,
-            full_name: fullName,
-            role: 'user'
-          })
-          .select()
-          .single()
-
-        if (profileError) throw profileError
-
-        setUser(data.user)
-        setProfile(profile)
-        // Use setTimeout to ensure navigation happens after state updates
-        setTimeout(() => navigate('/'), 0)
-        return { user: data.user }
-      } catch (error) {
-        console.error('Sign up error:', error)
-        setAuthError(error.message)
-        return { error }
-      }
-    }
+    isAdmin,
+    adminLogin,
+    signIn,
+    signOut,
+    signUp
   }
 
   return (

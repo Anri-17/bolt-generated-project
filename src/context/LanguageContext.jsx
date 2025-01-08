@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 
 const translations = {
   en: {
-    home: 'Home',
+		    home: 'Home',
     products: 'Products',
     contact: 'Contact',
     cart: 'Cart',
@@ -92,10 +92,17 @@ const translations = {
     team_text: 'Meet our passionate team of sports enthusiasts and professionals',
     history_text: 'Founded in 2010, we\'ve been serving athletes for over a decade',
     incorrect_credentials: 'Incorrect credentials',
-    generic_error: 'An error occurred. Please try again later.'
+    generic_error: 'An error occurred. Please try again later.',
+    // ... existing translations ...
+    admin_login: 'Admin Login',
+    adminEmail: 'Email',
+    adminPassword: 'Password',
+    login: 'Login',
+    logging_in: 'Logging in...',
+    admin_access_only: 'Only admin users can access this page'
   },
   ka: {
-    home: 'მთავარი',
+		home: 'მთავარი',
     products: 'პროდუქცია',
     contact: 'კონტაქტი',
     cart: 'კალათა',
@@ -185,20 +192,25 @@ const translations = {
     team_text: 'გაიცანით ჩვენი გუნდი - სპორტის ენთუზიასტები და პროფესიონალები',
     history_text: '2010 წელს დაარსებული კომპანია, რომელიც ათწლეულზე მეტია ემსახურება სპორტსმენებს',
     incorrect_credentials: 'არასწორი მონაცემები',
-    generic_error: 'დაფიქსირდა შეცდომა. გთხოვთ სცადოთ მოგვიანებით.'
-  }
+    generic_error: 'დაფიქსირდა შეცდომა. გთხოვთ სცადოთ მოგვიანებით.',
+    // ... existing translations ...
+    admin_login: 'ადმინისტრატორის შესვლა',
+    adminEmail: 'ელ. ფოსტა',
+    adminPassword: 'პაროლი',
+    login: 'შესვლა',
+    logging_in: 'შესვლა მიმდინარეობს...',
+    admin_access_only: 'მხოლოდ ადმინისტრატორებს შეუძლიათ ამ გვერდზე წვდომა'
+	}
 }
 
 const LanguageContext = createContext()
 
 export const LanguageProvider = ({ children }) => {
   const [language, setLanguage] = useState(() => {
-    // Get language from localStorage or default to 'ka'
     return localStorage.getItem('language') || 'ka'
   })
 
   useEffect(() => {
-    // Save language preference to localStorage
     localStorage.setItem('language', language)
   }, [language])
 
