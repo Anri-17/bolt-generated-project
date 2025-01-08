@@ -11,61 +11,70 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null)
   const navigate = useNavigate()
 
+  // Fetch user profile from Supabase
+  const fetchProfile = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) throw error
+      
+      // Set profile with role (default to 'customer' if not set)
+      setProfile({ ...data, role: data.role || 'customer' })
+      return data
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+      throw error
+    }
+  }
+
+  // Handle initial session check and auth state changes
   useEffect(() => {
-    const sessionCheck = async () => {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError) {
-        console.error("Error checking session:", sessionError)
-        setError("An unexpected error occurred while checking your session. Please try again later.")
-      } else if (session) {
-        setUser(session.user)
-        try {
+    let authListener = null
+
+    const checkSession = async () => {
+      setLoading(true)
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) throw error
+        
+        if (session) {
+          setUser(session.user)
           await fetchProfile(session.user.id)
-        } catch (profileError) {
-          console.error("Error fetching profile:", profileError)
-          //Handle profile fetch error without displaying a generic message.  Consider redirecting to profile creation or showing a custom message.
+        } else {
+          setUser(null)
+          setProfile(null)
         }
-      } else {
-        setUser(null)
-        setProfile(null)
+      } catch (error) {
+        setError(error.message)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
-    let authListener = null;
-
     const setupAuthListener = () => {
-      authListener = supabase.auth.onAuthStateChange((event, session) => {
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN') {
           setUser(session.user)
-          fetchProfile(session.user.id)
-            .then(profileData => {
-              if (profileData) {
-                setProfile(profileData);
-                navigate('/');
-              } else {
-                console.warn("No profile found for user:", session.user.id);
-                //Handle missing profile (e.g., redirect to profile creation)
-                setError("Your profile could not be found. Please contact support.");
-              }
-            })
-            .catch(profileError => {
-              console.error("Error fetching profile after sign-in:", profileError)
-              //Handle profile fetch error without displaying a generic message
-              //You might want to redirect to a profile creation page or show a custom message
-              //For now, we'll just log the error and continue
-            })
-          
+          await fetchProfile(session.user.id)
+          navigate('/')
         } else if (event === 'SIGNED_OUT') {
           setUser(null)
           setProfile(null)
-          navigate('/account')
+          navigate('/login')
+        } else if (event === 'PASSWORD_RECOVERY') {
+          navigate('/reset-password')
         }
       })
+      authListener = data
     }
 
+    checkSession()
     setupAuthListener()
-    sessionCheck()
 
     return () => {
       if (authListener?.unsubscribe) {
@@ -74,115 +83,156 @@ export const AuthProvider = ({ children }) => {
     }
   }, [navigate])
 
-  const fetchProfile = async (userId) => {
+  // Sign in with email and password
+  const signIn = async (email, password) => {
+    setLoading(true)
+    setError(null)
+    
     try {
-      console.log("Fetching profile for userId:", userId);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*, roles(*)') // Select the role from the roles table
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error("Error fetching profile:", error);
-        // Handle specific error scenarios (as before)
-        throw error;
-      }
-      // Extract the role from the roles relationship
-      const role = data.roles?.[0]?.name || 'customer'; // Default to 'customer' if no role is found
-
-      setProfile({ ...data, role }); // Add the role to the profile object
-      return { ...data, role };
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      })
+      
+      if (error) throw error
+      
+      await fetchProfile(data.user.id)
+      return data
     } catch (error) {
-      console.error("Unexpected error in fetchProfile:", error);
-      throw error;
+      setError(error.message)
+      throw error
+    } finally {
+      setLoading(false)
     }
-  };
-
-const signIn = async (email, password) => {
-  try {
-    setLoading(true);
-    setError(null);
-    const { user, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (authError) {
-      console.error("Supabase Auth Error:", authError);
-      // Handle specific Supabase auth errors
-      if (authError.message.includes("Incorrect credentials")) {
-        setError("Incorrect email or password.");
-      } else if (authError.message.includes("Email not found")) {
-        setError("Email not found.");
-      } else if (authError.message.includes("User is blocked")) {
-        setError("Your account is blocked. Please contact support.");
-      } else {
-        setError("An unexpected Supabase authentication error occurred. Please try again later.");
-      }
-      return; // Stop execution if there's a Supabase auth error
-    }
-
-    //Successful authentication, now fetch the profile
-    const profileData = await fetchProfile(user.id);
-    if (profileData) {
-      setProfile(profileData);
-      navigate('/');
-    } else {
-      console.warn("No profile found for user:", user.id);
-      // Handle missing profile (e.g., redirect to profile creation)
-      setError("Your profile could not be found. Please contact support.");
-    }
-  } catch (error) {
-    console.error("Unexpected error during sign-in:", error);
-    //This catch block should only execute if there's an unexpected error outside the Supabase auth call
-    //Consider logging the error to a service like Sentry for more detailed analysis
-  } finally {
-    setLoading(false);
   }
-};
 
+  // Sign up new user
   const signUp = async (email, password, fullName) => {
+    setLoading(true)
+    setError(null)
+    
     try {
-      setLoading(true)
-      setError(null)
-      const { user, error } = await supabase.auth.signUp({ email, password })
-      if (error) {
-        console.error("Supabase Sign-up Error:", error)
-        setError("Sign-up failed. Please try again later.")
-        throw error;
-      }
-      await supabase
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName
+          }
+        }
+      })
+      
+      if (authError) throw authError
+      
+      // Create profile in profiles table
+      const { error: profileError } = await supabase
         .from('profiles')
-        .insert([{ id: user.id, email, full_name: fullName }])
-        .then(() => fetchProfile(user.id))
-        .catch((error) => {
-          console.error("Error creating profile:", error)
-          setError("An unexpected error occurred while creating your profile.")
-        })
+        .insert([{
+          id: authData.user.id,
+          email,
+          full_name: fullName,
+          role: 'customer'
+        }])
+        
+      if (profileError) throw profileError
+      
+      return authData
     } catch (error) {
-      console.error("Sign-up Error:", error)
-      setError("An unexpected error occurred during sign-up.")
+      setError(error.message)
+      throw error
     } finally {
       setLoading(false)
     }
   }
 
+  // Sign out user
   const signOut = async () => {
+    setLoading(true)
+    setError(null)
+    
     try {
-      setLoading(true)
-      setError(null)
-      await supabase.auth.signOut()
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) throw error
+      
+      setUser(null)
+      setProfile(null)
+      navigate('/login')
     } catch (error) {
-      console.error("Supabase Sign-out Error:", error)
-      setError("Sign-out failed. Please try again later.")
+      setError(error.message)
+      throw error
     } finally {
       setLoading(false)
     }
+  }
+
+  // Send password reset email
+  const resetPassword = async (email) => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      })
+      
+      if (error) throw error
+    } catch (error) {
+      setError(error.message)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Update user password
+  const updatePassword = async (newPassword) => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+      
+      if (error) throw error
+    } catch (error) {
+      setError(error.message)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Check if user is admin
+  const isAdmin = () => {
+    return profile?.role === 'admin'
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, error, setError, setLoading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ 
+      user,
+      profile,
+      loading,
+      error,
+      signIn,
+      signUp,
+      signOut,
+      resetPassword,
+      updatePassword,
+      isAdmin,
+      setError
+    }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export const useAuth = () => useContext(AuthContext)
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}

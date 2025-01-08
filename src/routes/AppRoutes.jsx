@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import HomePage from '../pages/HomePage'
 import ProductsPage from '../pages/ProductsPage'
 import ContactPage from '../pages/ContactPage'
@@ -11,7 +11,7 @@ import NotFoundPage from '../pages/NotFoundPage'
 import { useAuth } from '../context/AuthContext'
 
 function AppRoutes() {
-  const { profile } = useAuth()
+  const { isAdmin } = useAuth()
 
   return (
     <Routes>
@@ -21,10 +21,13 @@ function AppRoutes() {
       <Route path="/cart" element={<CartPage />} />
       <Route path="/account" element={<AccountPage />} />
       <Route path="/about" element={<LearnMorePage />} />
-      {/* Conditionally render the admin route */}
-      {profile?.role === 'admin' && (
-        <Route path="/admin" element={<AdminPage />} />
-      )}
+      
+      {/* Protected Admin Route */}
+      <Route 
+        path="/admin" 
+        element={isAdmin() ? <AdminPage /> : <Navigate to="/" />} 
+      />
+      
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
