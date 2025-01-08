@@ -25,6 +25,10 @@ export function AuthProvider({ children }) {
             
           if (profile) {
             setProfile(profile)
+            // Redirect to admin page if user is admin and on the admin login page
+            if (profile.role === 'admin' && window.location.pathname === '/admin/login') {
+              navigate('/admin')
+            }
           }
         }
       } catch (error) {
@@ -61,6 +65,10 @@ export function AuthProvider({ children }) {
               setProfile(newProfile)
             } else {
               setProfile(profile)
+              // Redirect to admin page if user is admin and on the admin login page
+              if (profile.role === 'admin' && window.location.pathname === '/admin/login') {
+                navigate('/admin')
+              }
             }
           } else {
             setUser(null)
@@ -74,7 +82,42 @@ export function AuthProvider({ children }) {
     )
 
     return () => subscription?.unsubscribe()
-  }, [])
+  }, [navigate])
+
+  // Admin login
+  const adminLogin = async (email, password) => {
+    setAuthError(null)
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      
+      if (error) throw error
+      
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single()
+
+      if (profileError) throw profileError
+
+      // Check if user is admin
+      if (profile.role !== 'admin') {
+        await supabase.auth.signOut()
+        throw new Error('Only admin users can access this page')
+      }
+
+      setUser(data.user)
+      setProfile(profile)
+      navigate('/admin') // Redirect to admin page after successful login
+      return { user: data.user }
+    } catch (error) {
+      setAuthError(error.message)
+      return { error }
+    }
+  }
 
   // Regular sign in
   const signIn = async (email, password) => {
@@ -95,41 +138,6 @@ export function AuthProvider({ children }) {
         
       setProfile(profile)
       navigate('/')
-      return { user: data.user }
-    } catch (error) {
-      setAuthError(error.message)
-      return { error }
-    }
-  }
-
-  // Admin login - uses same logic as signIn but with role check
-  const adminLogin = async (email, password) => {
-    setAuthError(null)
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      })
-      
-      if (error) throw error
-      
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single()
-
-      if (profileError) throw profileError
-
-      // Only difference: check for admin role
-      if (profile.role !== 'admin') {
-        await supabase.auth.signOut()
-        throw new Error('Only admin users can access this page')
-      }
-
-      setUser(data.user)
-      setProfile(profile)
-      navigate('/admin')
       return { user: data.user }
     } catch (error) {
       setAuthError(error.message)

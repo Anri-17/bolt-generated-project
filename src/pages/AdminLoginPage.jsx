@@ -1,20 +1,25 @@
 import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
+import { useNavigate } from 'react-router-dom'
 
 export default function AdminLoginPage() {
   const { t } = useLanguage()
   const { adminLogin, authError } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     try {
-      await adminLogin(email, password)
+      const { error } = await adminLogin(email, password)
+      if (error) throw error
+
+      // Redirect to admin page after successful login
+      navigate('/admin')
     } catch (error) {
-      // Error is already handled in AuthContext
       console.error('Login error:', error)
     }
   }
