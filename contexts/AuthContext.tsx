@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client
 const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_URL!,
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
@@ -46,42 +45,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Check active session and subscribe to auth changes
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         loadUserData(session.user.id);
       } else {
         setIsLoading(false);
       }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        loadUserData(session.user.id);
-      } else {
-        setUser(null);
-        setIsLoading(false);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
     };
+
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session) {
+          loadUserData(session.user.id);
+        } else {
+          setUser(null);
+          setIsLoading(false);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const loadUserData = async (userId: string) => {
     try {
-      // Get user's school and role
       const { data: schoolUser, error: schoolUserError } = await supabase
         .from('school_users')
-        .select(`
-          role,
-          schools (
-            id,
-            name,
-            status
-          )
-        `)
+        .select('role, schools(id, name, status)')
         .eq('user_id', userId)
         .single();
 
@@ -108,18 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  useEffect(() => {
-    if (!isLoading) {
-      const inAuthGroup = segments[0] === '(auth)';
-      
-      if (!user && !inAuthGroup) {
-        router.replace('/login');
-      } else if (user && inAuthGroup) {
-        router.replace('/');
-      }
-    }
-  }, [user, segments, isLoading]);
-
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -134,7 +115,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, schoolName: string) => {
     try {
-      // Create user account
       const { data: { user: newUser }, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -143,32 +123,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (signUpError) throw signUpError;
       if (!newUser) throw new Error('User creation failed');
 
-      // Create school entry
       const { data: school, error: schoolError } = await supabase
         .from('schools')
-        .insert([
-          {
-            name: schoolName,
-            admin_id: newUser.id,
-            status: 'pending',
-          },
-        ])
+        .insert([{
+          name: schoolName,
+          admin_id: newUser.id,
+          status: 'pending',
+        }])
         .select()
         .single();
 
       if (schoolError) throw schoolError;
 
-      // Create school_user entry for admin
       const { error: schoolUserError } = await supabase
         .from('school_users')
-        .insert([
-          {
-            user_id: newUser.id,
-            school_id: school.id,
-            role: 'admin',
-            status: 'pending',
-          },
-        ]);
+        .insert([{
+          user_id: newUser.id,
+          school_id: school.id,
+          role: 'admin',
+          status: 'pending',
+        }]);
 
       if (schoolUserError) throw schoolUserError;
     } catch (error) {
